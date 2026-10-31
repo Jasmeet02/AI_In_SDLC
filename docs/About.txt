@@ -1,0 +1,152 @@
+Current architecture
+The app in this repository is a lightweight internal invoice approval demo, not yet a production system.
+
+Frontend: static web UI served from the API’s wwwroot folder
+API: ASP.NET Core 8 Web API
+Domain: business rules in the Domain project
+Persistence: in-memory repository only
+Auth: session-based sign-in with roles for Approver and Admin
+Workflow:
+Invoice created as Draft
+Invoice submitted for approval
+Approver approves or rejects
+Invoice transitions to Approved or Rejected
+Core rule ownership:
+approval lifecycle logic sits in the Domain layer
+controllers are thin and call service logic
+no database, queue, or payment integration exists in code today
+This is intentionally simple to support local demos and fast AI-assisted development.
+
+Future architecture
+The intended production architecture described in the ops materials is a more realistic operational model:
+
+API layer remains the main service entry point
+Database added for durable invoice, approval, and audit data
+Message bus or event topic for async processing and downstream notifications
+Payment provider integration with PayEx for settlement or payout workflows
+Background worker/consumer for event-driven tasks such as notifications or reconciliation
+Monitoring and operational controls:
+24x7 on-call model
+incident evidence and log retention
+CI pipeline and review/eval pack
+Security and governance:
+RBAC enforced
+audit logs for approvals and decisions
+signed, reviewable AI-assisted changes
+In short:
+Current state = demo app with in-memory data
+Future state = production-ready invoice approval system with persistence, event processing, and external systems
+
+PayEx requirements
+For the target-state production design, PayEx should be treated as a third-party payment integration with strict operational controls.
+
+Requirements:
+
+Payment requests must only be triggered for approved invoices
+Invoice approval state must be authoritative before any payment call
+Payment requests must be idempotent to avoid duplicate settlements
+External API failures must be retried with safe backoff and monitored
+All payment status changes must be recorded with timestamps and correlation IDs
+No card or sensitive payment data should be stored in the application database
+Prefer provider tokens or references instead of raw payment details in app state
+Payment success/failure must be traceable to the invoice and approval record
+This matches the scenario’s requirement that the app is not yet connected to PayEx in code, but the architecture should be designed as if it will be.
+
+Database requirements
+The future database should support both business operation and auditability.
+
+Core data requirements:
+
+Invoices:
+invoice ID
+status
+amount
+currency
+submitter
+approver
+created/updated timestamps
+Approval history:
+who approved/rejected
+when
+reason
+previous and final state
+Users and roles:
+user identity
+role assignment
+sign-in/session mapping
+Payment records:
+invoice reference
+PayEx transaction ID
+status
+amount
+timestamps
+Audit trail:
+every state transition
+system and human actions
+correlation IDs
+Database expectations:
+
+durable storage instead of in-memory
+transactional updates for state transitions
+relational model preferred for invoice and approval records
+immutable or append-only audit records for accountability
+backups, retention, and access controls
+schema versioning for future changes
+AI setup
+The AI setup for this assignment should be practical and evidence-driven.
+
+Recommended setup:
+
+GitHub Copilot or equivalent coding agent
+Model: MAI-Code-1.1-Flash as the current active model in this workspace
+Mode: agent-based development with review checkpoints
+Prompting pattern:
+define task
+inspect repo
+propose change
+validate in code/tests
+capture evidence
+Evidence logging:
+store AI interaction events as structured JSON/JSONL entries
+capture task, prompt, model, tool, outcome, and verification evidence
+log each meaningful AI interaction rather than relying only on git metadata
+Human in the loop:
+every AI suggestion should be reviewed
+acceptance or rejection must be explicit
+validation evidence must be documented
+This is important because the assignment expects AI augmentation traceability rather than just unverified code generation.
+
+Risk section
+Key risks in the current and future architecture:
+
+Authorization risk
+
+improper role checks could allow unauthorized approval or deletion
+mitigation: enforce role-based access and verify approval logic in tests
+Payment integrity risk
+
+duplicate or premature payment requests
+mitigation: idempotency keys, state validation, and provider reconciliation
+Data integrity risk
+
+invoice state may be inconsistent or lost without durable persistence
+mitigation: database transactions and audit trail
+Operational risk
+
+approval delays or service failures can block invoice processing
+mitigation: monitoring, timeout handling, retry logic, and incident evidence
+AI risk
+
+AI-generated code may bypass business rules or miss edge cases
+mitigation: code review, test coverage, and structured logging of AI actions
+Auditability risk
+
+lack of evidence makes it hard to explain approval decisions or investigate incidents
+mitigation: append-only audit records and JSONL interaction logs
+Integration risk
+
+PayEx outages or API mismatch can cause settlement failure
+mitigation: retries, alerting, and fallback handling
+Summary
+The system today is a simple demo app with in-memory state and session-based auth. The target architecture is a production-ready invoice approval service with durable storage, async workflows, PayEx integration, operational controls, and formal AI evidence capture. The main design concerns are approval integrity, payment safety, observability, and human-reviewed AI augmentation.
+
