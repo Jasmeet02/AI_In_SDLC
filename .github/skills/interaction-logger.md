@@ -18,14 +18,17 @@ logs/ai-assistance-log.jsonl
 
 ### Agent Details
 
+- agent
 - agent_name
 - agent_type
 - mode
 
 ### Request
 
+- context
 - request
-- follow_up_interactions
+- related_ids
+- parent_task
 
 ### Skills
 
@@ -43,35 +46,20 @@ logs/ai-assistance-log.jsonl
 
 - tools_used
 
-### AI Actions
+### Suggestions and Human Oversight
 
-- ai_actions
-
-### Deliverables
-
-- artifacts
-
-### Files
-
-- affected_files
-
-### Human Oversight
-
+- suggestion
 - human_decision
 - action_verification
 
-### Execution Evidence
-
-- execution_command
-- test_results
-
 ### Limitations
 
-- limitations
+- limitation
 
-### Outcome
+### Status and Deliverables
 
-- outcome
+- status
+- artifacts
 
 ## JSONL Template
 
@@ -82,63 +70,51 @@ Return a single valid JSON object suitable for appending to:
 {
   "id": "<unique-id>",
   "timestamp": "<ISO-8601 UTC timestamp>",
-  "stage": "<architecture-analysis|workflow-analysis|testing|governance|evaluation>",
-  "agent_name": "<agent-name>",
-  "agent_type": "<custom|sub-agent|built-in>",
-  "ai_tool": "<tool-name>",
-  "model": "<model-name>",
-  "mode": "<ask|plan|agent|edit>",
-  "request": "<user-request>",
-  "follow_up_interactions": [],
+  "stage": "<setup | architecture-analysis | workflow-analysis | testing | governance | evaluation>",
+  "agent": "<agent_name | agent>",
+  "agent_name": "<agent_name>",
+  "agent_type": "<built-in | custom | sub-agent>",
+  "ai_tool": "<ai_tool_name>",
+  "model": "<model_name>",
+  "mode": "<ask | plan | agent | edit>",
+  "related_ids": [],
+  "parent_task": null,
+  "context": "<task_context>",
+  "request": "<user_request>",
   "skills_used": [
     {
-      "name": "<skill-name>",
-      "type": "<custom|built-in>",
-      "purpose": "<purpose>"
+      "name": "<skill_name>",
+      "type": "<built-in | custom>",
+      "purpose": "<skill_purpose>",
+      "invocation": "<automatic | explicit>"
     }
   ],
   "subagents_used": [
     {
-      "name": "<subagent-name>",
-      "task": "<delegated-task>",
-      "status": "<completed|partial|failed>"
+      "name": "<subagent_name>",
+      "type": "<built-in | custom>",
+      "task": "<delegated_task>",
+      "status": "<completed | failed | partial>"
     }
   ],
   "mcp_tools_used": [
     {
-      "server": "<mcp-server>",
-      "tool": "<tool-name>",
+      "server": "<mcp_server_name>",
+      "tool": "<mcp_tool_name>",
       "purpose": "<purpose>"
     }
   ],
   "tools_used": [
-    "<tool-name>"
+    "<tool_name>"
   ],
-  "ai_actions": [
-    "<action>"
-  ],
+  "suggestion": "<suggestion_or_null>",
+  "human_decision": null,
+  "action_verification": "<validation_summary>",
+  "limitation": null,
+  "status": "<applied | partial | rework | failed>",
   "artifacts": [
-    {
-      "name": "<artifact-name>",
-      "path": "<artifact-path>",
-      "type": "<document|diagram|code|test|video>"
-    }
-  ],
-  "affected_files": [
-    "<file-path>"
-  ],
-  "human_decision": "<manual decision or correction>",
-  "action_verification": "<validation performed>",
-  "execution_command": "<command executed>",
-  "test_results": {
-    "passed": 0,
-    "failed": 0,
-    "notes": "<notes>"
-  },
-  "limitations": [
-    "<limitation-or-assumption>"
-  ],
-  "outcome": "<successful|partial|rework>"
+    "<artifact_path_or_name>"
+  ]
 }
 
 ## Rules

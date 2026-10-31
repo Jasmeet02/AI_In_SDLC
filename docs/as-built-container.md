@@ -2,49 +2,48 @@
 
 ```mermaid
 flowchart LR
-    User["User / Demo Operator\nREADME.md"]
-    Browser["Browser UI\nbackend/src/InvoiceApp.Api/wwwroot/index.html\nbackend/src/InvoiceApp.Api/wwwroot/app.js"]
+    Browser["Browser web UI\nbackend/src/InvoiceApp.Api/wwwroot/index.html + app.js"]
+    Api["InvoiceApp.Api runtime\nbackend/src/InvoiceApp.Api/Program.cs + controllers"]
+    Session["Session auth\nSessionAuthMiddleware + SessionStore"]
+    Domain["Approval rules\nApprovalService.cs"]
+    Repo["In-memory repository\nInMemoryInvoiceRepository.cs"]
+    Invoice["Invoice state\nInvoice.cs"]
 
-    subgraph AppContainer["InvoiceApp.Api Container\nbackend/src/InvoiceApp.Api/Program.cs"]
-        UI["Static Web UI\nbackend/src/InvoiceApp.Api/wwwroot/index.html"]
-        API["ASP.NET Core API\nbackend/src/InvoiceApp.Api/Controllers/AuthController.cs\nbackend/src/InvoiceApp.Api/Controllers/InvoicesController.cs"]
-        Auth["SessionAuthMiddleware\nbackend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs"]
-        Approval["ApprovalService\nbackend/src/InvoiceApp.Domain/ApprovalService.cs"]
-        Repo["InMemoryInvoiceRepository\nbackend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs"]
-        Sessions["SessionStore\nbackend/src/InvoiceApp.Api/Auth/SessionStore.cs"]
-    end
-
-    User --> Browser
-    Browser -->|HTTP /api/auth/login, /api/invoices, /api/approvals| API
-    Browser --> UI
-    UI --> API
-    API --> Auth
-    API --> Approval
-    Approval --> Repo
-    Auth --> Sessions
-
-    classDef app fill:#edf7ed,stroke:#2e8b57,color:#111;
-    classDef data fill:#fff4e5,stroke:#d97706,color:#111;
-    classDef user fill:#e8f1ff,stroke:#3b82f6,color:#111;
-
-    class User user;
-    class UI,API,Auth,Approval app;
-    class Repo,Sessions data;
+    Browser -->|HTTP + JSON + bearer token| Api
+    Api -->|session validation| Session
+    Api -->|invoice and approval API calls| Domain
+    Domain -->|read/write invoice records| Repo
+    Repo -->|contains| Invoice
 ```
 
 # Citations
 
-- Browser client and demo user interaction: [README.md](../README.md) lists the local demo accounts, and [backend/src/InvoiceApp.Api/wwwroot/index.html](../backend/src/InvoiceApp.Api/wwwroot/index.html) plus [backend/src/InvoiceApp.Api/wwwroot/app.js](../backend/src/InvoiceApp.Api/wwwroot/app.js) show the browser UI and the `/api` calls it makes.
-- Web app startup and runtime composition: [backend/src/InvoiceApp.Api/Program.cs](../backend/src/InvoiceApp.Api/Program.cs) configures the ASP.NET Core app, adds `SessionStore`, `InMemoryInvoiceRepository`, and `ApprovalService`, and runs the static UI with `UseStaticFiles()` and `MapControllers()`.
-- Login and session validation: [backend/src/InvoiceApp.Api/Controllers/AuthController.cs](../backend/src/InvoiceApp.Api/Controllers/AuthController.cs) issues bearer tokens, and [backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs](../backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs) validates them for `/api` requests.
-- Approval decision logic: [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs) implements the `Draft -> PendingApproval -> Approved/Rejected` lifecycle and persists the status update through the repository.
-- In-memory persistence: [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs](../backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs) stores invoices in a process-local list and is explicitly described as a no-database implementation.
-- Session storage: [backend/src/InvoiceApp.Api/Auth/SessionStore.cs](../backend/src/InvoiceApp.Api/Auth/SessionStore.cs) keeps role-based sessions in memory keyed by bearer token.
-- Planned production components are not part of the current runtime: [ops/README.md](../ops/README.md) explicitly states that database, topic, and payment-provider components are production-only scenarios, not code in the current app.
+- Browser UI assets: [backend/src/InvoiceApp.Api/wwwroot/index.html](../backend/src/InvoiceApp.Api/wwwroot/index.html), [backend/src/InvoiceApp.Api/wwwroot/app.js](../backend/src/InvoiceApp.Api/wwwroot/app.js)
+- ASP.NET Core application startup and static-file hosting: [backend/src/InvoiceApp.Api/Program.cs](../backend/src/InvoiceApp.Api/Program.cs)
+- API controller routes: [backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs](../backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs), [backend/src/InvoiceApp.Api/Controllers/AuthController.cs](../backend/src/InvoiceApp.Api/Controllers/AuthController.cs), [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs)
+- Session authentication and role enforcement: [backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs](../backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs), [backend/src/InvoiceApp.Api/Auth/SessionStore.cs](../backend/src/InvoiceApp.Api/Auth/SessionStore.cs), [backend/src/InvoiceApp.Api/Auth/UserSession.cs](../backend/src/InvoiceApp.Api/Auth/UserSession.cs)
+- Domain workflow rules: [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs)
+- Repository contract and invoice model: [backend/src/InvoiceApp.Domain/IInvoiceRepository.cs](../backend/src/InvoiceApp.Domain/IInvoiceRepository.cs), [backend/src/InvoiceApp.Domain/Invoice.cs](../backend/src/InvoiceApp.Domain/Invoice.cs)
+- In-memory implementation: [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs](../backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs)
+- Overall app description confirming the demo-only, in-memory design: [README.md](../README.md), [docs/About.txt](About.txt), [ops/README.md](../ops/README.md)
 
 # Inferred Items
 
-- The current runtime is a single ASP.NET Core process serving a static UI and API, without separate database, worker, queue, or payment services.
-- The repository and session store are in-process implementation details, not containerized dependencies.
-- The approval flow is synchronous and request-scoped: the browser calls the API, the domain service updates the invoice state, and the in-memory repository persists the result in the same process.
-- The planned production elements described in [ops/README.md](../ops/README.md) and [docs/About.txt](../docs/About.txt) are intentionally omitted from the as-built diagram because they are not implemented in the current codebase.
+## Evidence-backed observations
+
+- The runtime is a single ASP.NET Core process that serves the static web UI and exposes API controllers from the same app entry point; see [backend/src/InvoiceApp.Api/Program.cs](../backend/src/InvoiceApp.Api/Program.cs).
+- The app uses session-based authentication and bearer tokens for protected API calls; see [backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs](../backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs) and [backend/src/InvoiceApp.Api/Controllers/AuthController.cs](../backend/src/InvoiceApp.Api/Controllers/AuthController.cs).
+- The approval workflow is implemented in the domain layer and the controllers are thin API entry points; see [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs) and [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs).
+- Invoice persistence is intentionally in-memory; the application wires the repository to `InMemoryInvoiceRepository`, and that class stores data in a local list rather than a database; see [backend/src/InvoiceApp.Api/Program.cs](../backend/src/InvoiceApp.Api/Program.cs) and [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs](../backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs).
+
+## Inferred items
+
+- The browser and API are co-located in one deployment unit, because the app serves both static files and controllers from the same process.
+- The as-built architecture is a lightweight demo runtime, not a distributed production deployment.
+
+## Unsupported components corrected from the production scenario
+
+- Database: not part of the current runtime; explicitly stated as future-only in [docs/About.txt](About.txt) and [ops/README.md](../ops/README.md).
+- Message topic / event broker: not present in code and only described as a planned production scenario in [ops/README.md](../ops/README.md).
+- Payment provider integration (PayEx): intentionally absent from the current code and described as future-only in [docs/About.txt](About.txt) and [ops/README.md](../ops/README.md).
+- Background worker / consumer: not present in the app entry point or runtime code and therefore excluded from the as-built container view.

@@ -3,63 +3,89 @@
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Operator as Operator [README.md]
-    participant Browser as Browser UI [backend/src/InvoiceApp.Api/wwwroot/index.html, backend/src/InvoiceApp.Api/wwwroot/app.js]
-    participant Login as AuthController.Login [backend/src/InvoiceApp.Api/Controllers/AuthController.cs]
-    participant SessionStore as SessionStore.Create/Get [backend/src/InvoiceApp.Api/Auth/SessionStore.cs]
-    participant AuthMW as SessionAuthMiddleware.InvokeAsync [backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs]
-    participant RoleGuard as RequireRoleAttribute.OnActionExecuting [backend/src/InvoiceApp.Api/Auth/RequireRoleAttribute.cs]
-    participant Approvals as ApprovalsController.Approve/Reject [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs]
-    participant Base as ApiControllerBase.Handle [backend/src/InvoiceApp.Api/Controllers/ApiControllerBase.cs]
-    participant Service as ApprovalService.Approve/Reject [backend/src/InvoiceApp.Domain/ApprovalService.cs]
-    participant Repo as InMemoryInvoiceRepository.GetById/Update [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs]
+    actor User
+    participant Browser as Browser UI<br/>backend/src/InvoiceApp.Api/wwwroot/app.js
+    participant InvoicesController as InvoicesController<br/>backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs
+    participant SessionAuth as SessionAuthMiddleware<br/>backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs
+    participant ApprovalsController as ApprovalsController<br/>backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs
+    participant ApprovalService as ApprovalService<br/>backend/src/InvoiceApp.Domain/ApprovalService.cs
+    participant Repository as IInvoiceRepository / InMemoryInvoiceRepository<br/>backend/src/InvoiceApp.Domain/IInvoiceRepository.cs + backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs
 
-    Operator->>Browser: Sign in with demo account
-    Browser->>Login: POST /api/auth/login { username, password }
-    Login->>SessionStore: Create(new UserSession(username, role))
-    SessionStore-->>Login: bearer token
-    Login-->>Browser: 200 OK { token, username, role }
+    User->>Browser: Create invoice with customer name and amount
+    Browser->>InvoicesController: POST /api/invoices { customerName, amount }
+    InvoicesController->>Repository: Add(new Invoice)
+    Repository-->>InvoicesController: Invoice created as Draft
+    InvoicesController-->>Browser: 201 Created
 
-    Browser->>AuthMW: POST /api/approvals/{invoiceId}/approve or /reject with Authorization: Bearer token
-    AuthMW->>SessionStore: Get(token)
-    SessionStore-->>AuthMW: UserSession(username, role)
-    AuthMW-->>Browser: continue request or 401 Unauthorized
+    User->>Browser: Submit invoice for approval
+    Browser->>InvoicesController: POST /api/invoices/{id}/submit
+    InvoicesController->>ApprovalService: Submit(invoiceId)
+    ApprovalService->>Repository: GetById(invoiceId)
+    Repository-->>ApprovalService: Invoice
+    ApprovalService->>ApprovalService: Validate status is Draft
+    ApprovalService->>ApprovalService: Set Status = PendingApproval
+    ApprovalService->>Repository: Update(invoice)
+    Repository-->>ApprovalService: Updated invoice
+    ApprovalService-->>InvoicesController: Invoice
+    InvoicesController-->>Browser: 200 OK
 
-    Browser->>Approvals: POST /api/approvals/{invoiceId}/approve or /reject
-    Approvals->>RoleGuard: OnActionExecuting(session)
-    RoleGuard-->>Approvals: allow when role is Approver or Admin, else 403 Forbidden
-    Approvals->>Base: Handle(() => _approvals.Approve(...)/Reject(...))
-    Base->>Service: Approve(invoiceId, currentUser) or Reject(invoiceId, currentUser, reason)
-    Service->>Repo: GetById(invoiceId)
-    Repo-->>Service: Invoice
-    alt Approve path
-        Service->>Repo: Update(invoice.Status = Approved)
-    else Reject path
-        Service->>Repo: Update(invoice.Status = Rejected, DecisionNote = reason)
+    Browser->>SessionAuth: HTTPS request with Authorization: Bearer token
+    SessionAuth->>SessionAuth: Validate bearer token and session
+    alt token valid
+        SessionAuth-->>ApprovalsController: Request continues
+    else token missing or invalid
+        SessionAuth-->>Browser: 401 Unauthorized
     end
-    Repo-->>Service: updated invoice
-    Service-->>Base: Invoice
-    Base-->>Approvals: Ok(invoice) or mapped error
-    Approvals-->>Browser: HTTP 200/400/403/409/404 response
-    Browser-->>Operator: refresh invoice list and status
+
+    User->>Browser: Approve or reject pending invoice
+    Browser->>ApprovalsController: POST /api/approvals/{invoiceId}/approve or /reject
+    ApprovalsController->>ApprovalService: Approve(invoiceId, username) or Reject(invoiceId, username, reason)
+    ApprovalService->>Repository: GetById(invoiceId)
+    Repository-->>ApprovalService: Invoice
+    ApprovalService->>ApprovalService: Ensure invoice is PendingApproval
+    alt approve
+        ApprovalService->>ApprovalService: Set Status = Approved and DecidedBy / DecidedAt
+    else reject
+        ApprovalService->>ApprovalService: Validate reason is provided, set Status = Rejected and DecisionNote
+    end
+    ApprovalService->>Repository: Update(invoice)
+    Repository-->>ApprovalService: Updated invoice
+    ApprovalService-->>ApprovalsController: Invoice
+    ApprovalsController-->>Browser: 200 OK
 ```
 
 # Citations
 
-- Browser client and demo accounts: [README.md](../README.md), [backend/src/InvoiceApp.Api/wwwroot/app.js](../backend/src/InvoiceApp.Api/wwwroot/app.js), [backend/src/InvoiceApp.Api/wwwroot/index.html](../backend/src/InvoiceApp.Api/wwwroot/index.html)
-- Login and token issuance: [backend/src/InvoiceApp.Api/Controllers/AuthController.cs](../backend/src/InvoiceApp.Api/Controllers/AuthController.cs), [backend/src/InvoiceApp.Api/Auth/SessionStore.cs](../backend/src/InvoiceApp.Api/Auth/SessionStore.cs)
-- Session validation: [backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs](../backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs)
-- Role enforcement: [backend/src/InvoiceApp.Api/Auth/RequireRoleAttribute.cs](../backend/src/InvoiceApp.Api/Auth/RequireRoleAttribute.cs)
-- Approval endpoints: [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs)
-- Error mapping: [backend/src/InvoiceApp.Api/Controllers/ApiControllerBase.cs](../backend/src/InvoiceApp.Api/Controllers/ApiControllerBase.cs)
-- Business logic: [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs)
-- Repository state update: [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs](../backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs)
-- Submit-to-pending flow: [backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs](../backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs)
+## Participants
+
+- User: this is the browser user interacting with the demo app; the flow is initiated in [backend/src/InvoiceApp.Api/wwwroot/app.js](../backend/src/InvoiceApp.Api/wwwroot/app.js).
+- Browser UI: the static UI sends API calls for invoice creation, submission, and approval; see [backend/src/InvoiceApp.Api/wwwroot/app.js](../backend/src/InvoiceApp.Api/wwwroot/app.js).
+- InvoicesController: creates and submits invoices via `Create`, `Submit`, and `GetAll` endpoints in [backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs](../backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs).
+- SessionAuthMiddleware: validates bearer tokens before protected `/api` requests in [backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs](../backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs).
+- ApprovalsController: handles approval and rejection actions for pending invoices in [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs).
+- ApprovalService: owns the lifecycle transitions in `Submit`, `Approve`, `Reject`, and `EnsurePending` in [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs).
+- IInvoiceRepository / InMemoryInvoiceRepository: the persistence contract and in-memory implementation are in [backend/src/InvoiceApp.Domain/IInvoiceRepository.cs](../backend/src/InvoiceApp.Domain/IInvoiceRepository.cs) and [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs](../backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs).
+
+## Interactions
+
+- `User -> Browser`: invoice creation and submit actions are wired in [backend/src/InvoiceApp.Api/wwwroot/app.js](../backend/src/InvoiceApp.Api/wwwroot/app.js).
+- `Browser -> InvoicesController`: `POST /api/invoices` and `POST /api/invoices/{id}/submit` are declared in [backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs](../backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs).
+- `InvoicesController -> Repository`: `Add(...)` and `Update(...)` use the repository contract in [backend/src/InvoiceApp.Domain/IInvoiceRepository.cs](../backend/src/InvoiceApp.Domain/IInvoiceRepository.cs).
+- `ApprovalService -> Repository`: `GetById(...)` and `Update(...)` are used in [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs).
+- `Browser -> SessionAuth`: bearer-token validation is enforced in [backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs](../backend/src/InvoiceApp.Api/Auth/SessionAuthMiddleware.cs).
+- `Browser -> ApprovalsController`: approve/reject requests are exposed in [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs).
+- `ApprovalsController -> ApprovalService`: the approval and rejection methods call `Approve(...)` and `Reject(...)` in [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs) and [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs).
+- `ApprovalService -> ApprovalService`: `EnsurePending` enforces the state machine for decision approval in [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs).
 
 # Inferred Items
 
-- The real workflow is synchronous and in-process: the browser invokes API endpoints, the middleware validates the bearer token, and the approval decision is applied directly by the domain service before the repository is updated.
-- The approval path is not event-driven or queue-based; the state transition occurs inside the same request cycle in [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs) and is persisted in [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs](../backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs).
-- The role gate happens before the controller action executes, as shown by the combined checks in [backend/src/InvoiceApp.Api/Auth/RequireRoleAttribute.cs](../backend/src/InvoiceApp.Api/Auth/RequireRoleAttribute.cs) and [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs).
-- The illustrated sequence intentionally excludes the planned production concerns described in [ops/README.md](../ops/README.md), because they are not part of the running application code.
+## Evidence-backed observations
 
+- The actual user approval workflow is: create invoice, submit invoice, validate bearer-token session, then approve or reject pending invoice; this is reflected in [backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs](../backend/src/InvoiceApp.Api/Controllers/InvoicesController.cs), [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs), and [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs).
+- Approval logic is centralized in the domain service, while controllers remain thin API entry points; see [backend/src/InvoiceApp.Domain/ApprovalService.cs](../backend/src/InvoiceApp.Domain/ApprovalService.cs) and [backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs](../backend/src/InvoiceApp.Api/Controllers/ApprovalsController.cs).
+- The repository is intentionally in-memory and not database-backed; see [backend/src/InvoiceApp.Api/Program.cs](../backend/src/InvoiceApp.Api/Program.cs) and [backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs](../backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs).
+
+## Inferred items
+
+- The workflow is a single-process browser-to-API approval flow rather than a distributed async workflow, because the app serves the UI and API in one ASP.NET Core process and keeps state in memory.
+- There is no queue, worker, or external payment step in the actual approval flow; those are production-only concepts described in [docs/About.txt](../docs/About.txt) and [ops/README.md](../ops/README.md), not in the runtime code.

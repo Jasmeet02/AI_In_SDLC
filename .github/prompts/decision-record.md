@@ -1,31 +1,3 @@
-Use architecture-analyst.
-
-Use governance-review.
-
-Create an Architecture Decision Record (ADR).
-
-Decision:
-
-Implement exactly-once processing for the approval workflow.
-
-Include:
-
-- Context
-- Problem Statement
-- Decision
-- Alternatives Considered
-- Consequences
-- Trade-offs
-- Where the Agent Was Wrong or Useless
-- Human Corrections
-- Final Rationale
-
-Save output to:
-
-docs/decision-record.md
-
-Structure:
-
 # Architecture Decision Record
 
 ## Context
@@ -36,7 +8,23 @@ Structure:
 
 ## Alternatives Considered
 
+(Must compare:
+- Idempotency key + dedupe table
+- Transactional outbox + worker
+- Optimistic submission + nightly reconciliation)
+
 ## Consequences
+
+## Trade-offs
+
+## Failure Analysis
+(How does it fail at 3 a.m. on the last day of the month?)
+
+## Cost Analysis
+(Build cost and run cost)
+
+## Revisit Conditions
+(What would cause this decision to be reconsidered?)
 
 ## Where the Agent Was Wrong or Useless
 
@@ -44,4 +32,14 @@ Structure:
 
 ## Final Rationale
 
-Generate a JSONL audit record using interaction-logger.
+Then use interaction-logging and generate a JSONL audit record for:
+
+logs/ai-assistance-log.jsonl
+
+The audit record must reference:
+
+- docs/decision-record.md
+- Skills used
+- AI actions performed
+- Human validation performed
+- Outcome

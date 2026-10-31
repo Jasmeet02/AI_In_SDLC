@@ -29,4 +29,4 @@ Structure:
 
 ## Final Decision
 
-Generate a JSONL audit record using interaction-logger.
+Generate a JSONL audit record using interaction-logging.

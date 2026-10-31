@@ -2,17 +2,31 @@ Use architecture-analyst.
 
 Use governance-review.
 
-Create a one-page autonomy policy.
+Create a one-page autonomy policy for the following workflow:
 
-Specify:
+Dependency Bumps
 
-- Day-One Autonomy Level
-- Allowed Autonomous Actions
-- Human Approval Required Actions
-- Escalation Conditions
+Requirements:
+
+Define multiple autonomy levels and identify which tasks can be performed at each level.
+
+Include:
+
+- Workflow Description
+- Autonomy Levels
+- Tasks Allowed at Each Level
+- Safety Controls for Each Level
 - Validation Requirements
-- Safety Controls
-- Rollback Expectations
+- Escalation Conditions
+- Evidence Required To Move To A Higher Level
+- Approval Authority For Level Promotion
+- Day-One Autonomy Level
+- Rationale For Day-One Level
+
+Assumptions:
+
+- Two of six engineers are new to the codebase.
+- The policy must be suitable for production software delivery.
 
 Save output to:
 
@@ -22,18 +36,30 @@ Structure:
 
 # Autonomy Policy
 
-## Day-One Autonomy Level
+## Workflow
 
-## Allowed Actions
+## Autonomy Levels
 
-## Human Approval Required
-
-## Escalation Conditions
-
-## Validation Requirements
+## Tasks By Level
 
 ## Safety Controls
 
-## Rollback Plan
+## Validation Requirements
 
-Generate a JSONL audit record using interaction-logger.
+## Escalation Conditions
+
+## Evidence Required To Move Up A Level
+
+## Approval Authority
+
+## Day-One Autonomy Level
+
+## Day-One Rationale
+
+Generate a JSONL audit record using interaction-logging.
+
+The audit record must reference:
+
+- docs/autonomy-policy.md
+- governance-review
+- interaction-logging

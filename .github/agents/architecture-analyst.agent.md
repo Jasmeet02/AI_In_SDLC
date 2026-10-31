@@ -27,4 +27,4 @@ Use subagents:
 Use:
 
 - architecture-review
-- interaction-logger
+- interaction-logging

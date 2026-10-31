@@ -25,5 +25,5 @@ Structure:
 
 # Inferred Items
 
-Then use interaction-logger and generate a JSONL audit record.
+Then use interaction-logging and generate a JSONL audit record.
 
