@@ -1,23 +1,49 @@
 Use architecture-analyst.
 
-Generate:
+Using the validated As-Built C4 Container Diagram as the baseline:
 
-1. Target Architecture Diagram
+Create a Target Architecture Diagram showing the future state after persistence and PayEx integration are implemented.
 
 Requirements:
 
+- Read the validated as-built architecture artifacts first.
 - Use Mermaid MCP to generate the diagram.
-- Add:
-  - Azure SQL
-  - Service Bus
-  - Worker
-  - PayEx
+- Preserve all existing containers and interactions unless there is evidence they would change.
+- Add proposed architecture elements required for:
+  - Azure SQL persistence
+  - Service Bus messaging
+  - Background Worker processing
+  - PayEx integration
 
-- Mark future-only components as:
+Clearly separate:
+
+- Existing Components
+- Planned Components
+
+Mark all future-only elements as:
 
 [PLANNED]
 
-Save output to:
+Mark all future-only interactions as:
+
+[PLANNED]
+
+Do not remove existing components unless justified by code evidence.
+
+For every new component or interaction:
+
+- Explain why it was added.
+- State whether it is supported by current code or is a proposed design item.
+
+List all proposed elements explicitly.
+
+Generate valid Mermaid syntax.
+
+Validate Mermaid syntax before returning.
+
+Fix Mermaid parse errors if any are found.
+
+Outputs:
 
 docs/target-architecture.md
 
@@ -25,6 +51,30 @@ Structure:
 
 # Target Architecture
 
-# Planned Components
+## Mermaid Diagram
 
-Then use interaction-logging and generate a JSONL audit record.
+## Existing Components
+
+## Planned Components
+
+## Existing Interactions
+
+## Planned Interactions
+
+## Design Rationale
+
+## Inferred Future-State Assumptions
+
+## Sources
+
+For every existing component and interaction:
+- cite the supporting file path or symbol from the repository.
+
+For every planned component and interaction:
+- explain why it is required for the target architecture.
+
+Then use interaction-logging.
+
+Generate a JSONL audit record referencing:
+
+- docs/target-architecture.md

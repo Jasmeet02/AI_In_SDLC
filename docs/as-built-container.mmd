@@ -1,0 +1,16 @@
+C4Container
+    title As-Built C4 Container Diagram
+
+    Person(user, "User", "Browser user interacting with the invoice approval app")
+
+    System_Boundary(c1, "InvoiceApp") {
+        Container(browser, "Browser UI", "HTML/JavaScript", "Renders the sign-in, invoice list, and approval actions")
+        Container(api, "Invoice API Application", "ASP.NET Core Web API", "Hosts controllers, static web assets, and request validation middleware")
+        Container(session, "Session Store", "In-memory session cache", "Stores bearer-token sessions keyed by username and role")
+        Container(repo, "Invoice Data Store", "In-memory repository", "Stores invoice records and lifecycle state")
+    }
+
+    Rel(user, browser, "Uses")
+    Rel(browser, api, "HTTPS /api/* requests", "JSON over HTTP")
+    Rel(api, session, "Validates bearer tokens", "SessionStore.Get()")
+    Rel(api, repo, "Reads and updates invoice state", "IInvoiceRepository")

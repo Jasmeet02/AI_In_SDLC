@@ -1,0 +1,67 @@
+sequenceDiagram
+    autonumber
+    actor User as Browser User
+    participant Browser as Browser UI
+    participant API as Invoice API Application
+    participant Middleware as SessionAuthMiddleware
+    participant Auth as AuthController
+    participant SessionStore as SessionStore
+    participant RequireRole as RequireRoleAttribute
+    participant Invoices as InvoicesController
+    participant Approvals as ApprovalsController
+    participant Service as ApprovalService
+    participant Repo as InMemoryInvoiceRepository
+
+    User->>Browser: Sign in with username and password
+    Browser->>API: POST /api/auth/login {username, password}
+    API->>Auth: Login(request)
+    Auth->>SessionStore: Create(new UserSession(username, role))
+    SessionStore-->>Auth: bearer token
+    Auth-->>Browser: 200 OK {token, username, role}
+    Browser->>Browser: Save token in sessionStorage
+
+    User->>Browser: View invoices
+    Browser->>API: GET /api/invoices with Authorization: Bearer token
+    API->>Middleware: InvokeAsync(HttpContext)
+    Middleware->>SessionStore: Get(token)
+    SessionStore-->>Middleware: UserSession
+    Middleware-->>API: continue
+    API->>Invoices: GetAll(status)
+    Invoices->>Repo: GetAll()
+    Repo-->>Invoices: invoices
+    Invoices-->>Browser: 200 OK invoice list
+
+    User->>Browser: Submit invoice for approval
+    Browser->>API: POST /api/invoices/{id}/submit with Authorization: Bearer token
+    API->>Middleware: InvokeAsync(HttpContext)
+    Middleware->>SessionStore: Get(token)
+    SessionStore-->>Middleware: UserSession
+    Middleware-->>API: continue
+    API->>Invoices: Submit(id)
+    Invoices->>Service: Submit(id)
+    Service->>Repo: GetById(id)
+    Repo-->>Service: invoice
+    Service->>Service: Validate invoice status is Draft
+    Service->>Repo: Update(invoice) with PendingApproval
+    Repo-->>Service: updated invoice
+    Service-->>Invoices: Invoice
+    Invoices-->>Browser: 200 OK updated invoice
+
+    User->>Browser: Approve pending invoice
+    Browser->>API: POST /api/approvals/{invoiceId}/approve with Authorization: Bearer token
+    API->>Middleware: InvokeAsync(HttpContext)
+    Middleware->>SessionStore: Get(token)
+    SessionStore-->>Middleware: UserSession
+    Middleware-->>API: continue
+    API->>RequireRole: OnActionExecuting(HttpContext)
+    RequireRole->>RequireRole: Check session.Role in [Approver, Admin]
+    RequireRole-->>API: allow request
+    API->>Approvals: Approve(invoiceId)
+    Approvals->>Service: Approve(invoiceId, HttpContext.GetSession().Username)
+    Service->>Repo: GetById(invoiceId)
+    Repo-->>Service: invoice
+    Service->>Service: EnsurePending(invoice)
+    Service->>Repo: Update(invoice) with Approved, DecidedBy, DecidedAt
+    Repo-->>Service: updated invoice
+    Service-->>Approvals: Invoice
+    Approvals-->>Browser: 200 OK approved invoice
