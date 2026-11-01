@@ -1,0 +1,20 @@
+diff --git a/backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs b/backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs
+--- a/backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs
++++ b/backend/src/InvoiceApp.Api/InMemoryInvoiceRepository.cs
+@@ -27,9 +27,16 @@ public class InMemoryInvoiceRepository : IInvoiceRepository
+             if (string.IsNullOrEmpty(invoice.Id))
+             {
+                 invoice.Id = $"INV-{_nextNumber++}";
+             }
+ 
++            var existing = _invoices.FirstOrDefault(i => i.Id == invoice.Id);
++
++            if (existing is not null)
++            {
++                _invoices.Remove(existing);
++            }
++
+             _invoices.Add(invoice);
+             return invoice;
+         }
+     }

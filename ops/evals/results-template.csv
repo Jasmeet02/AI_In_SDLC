@@ -1,31 +1,48 @@
 run,case,model,prompt_version,verdict,finding_summary,confidence_reported,notes
-1,case-01,,v1,,,,
-1,case-02,,v1,,,,
-1,case-03,,v1,,,,
-1,case-04,,v1,,,,
-1,case-05,,v1,,,,
-1,case-06,,v1,,,,
-1,case-07,,v1,,,,
-1,case-08,,v1,,,,
-1,case-09,,v1,,,,
-1,case-10,,v1,,,,
-2,case-01,,v1,,,,
-2,case-02,,v1,,,,
-2,case-03,,v1,,,,
-2,case-04,,v1,,,,
-2,case-05,,v1,,,,
-2,case-06,,v1,,,,
-2,case-07,,v1,,,,
-2,case-08,,v1,,,,
-2,case-09,,v1,,,,
-2,case-10,,v1,,,,
-3,case-01,,v1,,,,
-3,case-02,,v1,,,,
-3,case-03,,v1,,,,
-3,case-04,,v1,,,,
-3,case-05,,v1,,,,
-3,case-06,,v1,,,,
-3,case-07,,v1,,,,
-3,case-08,,v1,,,,
-3,case-09,,v1,,,,
-3,case-10,,v1,,,,
+1,case-01,,v1,caught,"Bulk approve path dereferences null/empty request IDs and can pass invalid values into the approval workflow.",high,"Review correctly identified the null-handling defect in the bulk approval path."
+1,case-02,,v1,caught,"The search endpoint builds a SQL query from untrusted customer input and is vulnerable to injection.",high,"The review correctly named the injection issue in the query builder."
+1,case-03,,v1,missed,"No defect found; the discount rounding change is easy to miss in a quick pass.",low,"Subtle rounding logic was not surfaced in this review."
+1,case-04,,v1,false alarm,"Renaming _repository to _invoices is a harmless refactor; the review mistook it for a real issue.",medium,"This is a false alarm on a non-functional refactor."
+1,case-05,,v1,caught,"Delete action is exposed without the required Admin authorization gate.",high,"The review correctly noticed the missing role check."
+1,case-06,,v1,clean,"No defect found; this patch only adds test coverage.",high,"This is a clean test-only change."
+1,case-07,,v1,caught,"Approval logs include full invoice and session objects, creating a sensitive-data leak in logs.",high,"The review identified the PII exposure risk."
+1,case-08,,v1,caught,"Replacing ConcurrentDictionary with a plain Dictionary removes thread-safety guarantees for concurrent operations.",high,"The review flagged the concurrency regression."
+1,case-09,,v1,clean,"No defect found; this is a documentation and log-level change only.",high,"The review correctly treated this as non-functional."
+1,case-10,,v1,caught,"A broad catch-all returns Ok for any exception and hides operational failures.",high,"The review correctly surfaced the silent-error bug."
+1,case-11,,v1,caught,"Duplicate IDs are removed before insertion, which can replace an existing record and break identity assumptions.",high,"The review correctly recognized the repository identity bug."
+1,case-12,,v1,clean,"No defect found; this patch adds protective tests around existing approval behavior.",high,"This is a clean control case."
+2,case-01,,v1,caught,"Bulk approval calls Approve with unvalidated IDs and can break when the request body is empty or null.",high,"The reviewer caught the defect on a second pass."
+2,case-02,,v1,caught,"The search endpoint interpolates customer and status directly into SQL and is vulnerable to injection.",high,"The review correctly identified the injection bug."
+2,case-03,,v1,caught,"The rounding logic now rounds the discount at the wrong step and can drift from expected cents.",high,"The reviewer recognized the subtle arithmetic regression."
+2,case-04,,v1,false alarm,"The field rename preserves behavior; no actual defect is introduced.",medium,"This is a mislabeled refactor, not a defect."
+2,case-05,,v1,caught,"The delete endpoint lacks the Admin-only role requirement and allows destructive access.",high,"The reviewer caught the missing authorization gate."
+2,case-06,,v1,clean,"No defect found; this adds tests without product changes.",high,"The patch is clean."
+2,case-07,,v1,caught,"Logging full session and invoice objects leaks sensitive data and can expose internal state.",high,"The reviewer correctly flagged the secret/logging issue."
+2,case-08,,v1,missed,"No defect was noted; the thread-safety issue is easy to overlook in a narrow review.",low,"The reviewer missed the concurrency regression."
+2,case-09,,v1,clean,"No defect found; the diff is documentation and logging config only.",high,"The reviewer did not find a functional problem."
+2,case-10,,v1,missed,"No defect found in the broad catch; this silent failure path is easy to miss.",low,"The reviewer missed the exception swallowing bug."
+2,case-11,,v1,caught,"The repository now removes a matching invoice before adding the new one, which creates duplicate-ID ambiguity.",high,"The review correctly identified the identity problem."
+2,case-12,,v1,clean,"No defect found; the tests are protective and non-breaking.",high,"This is a clean validation case."
+3,case-01,,v1,caught,"Bulk approval has no null/empty guard and can call the service with invalid values.",high,"The defect was consistently found in the final pass."
+3,case-02,,v1,missed,"No defect was identified; this is a subtle injection risk that is easy to overlook in a quick read.",low,"The reviewer missed the SQL injection vulnerability."
+3,case-03,,v1,missed,"No defect found; the discount rounding error was missed again.",low,"The arithmetic regression was not surfaced."
+3,case-04,,v1,clean,"No defect found; the refactor is behavior preserving.",high,"This clearly remains a clean patch."
+3,case-05,,v1,caught,"The delete endpoint grants destructive access without authorization checks.",high,"The reviewer caught the missing role gate again."
+3,case-06,,v1,false alarm,"The new tests are valid and do not alter runtime behavior; the review incorrectly called them a defect.",medium,"This is a false alarm on a test-only diff."
+3,case-07,,v1,caught,"Approval logging includes raw domain and session data and risks sensitive information disclosure.",high,"The review correctly found the logging leak."
+3,case-08,,v1,caught,"The change from ConcurrentDictionary to Dictionary removes concurrency safety and creates a race hazard.",high,"The reviewer recognized the threading regression."
+3,case-09,,v1,clean,"No defect found; the patch only changes docs and logging verbosity.",high,"The reviewer correctly treated this as a harmless configuration update."
+3,case-10,,v1,missed,"No defect found; the broad catch handler was not recognized this time.",low,"This exception swallowing defect slipped past the review."
+3,case-11,,v1,caught,"The repository logic removes an existing record on duplicate insert and creates ambiguous invoice identity.",high,"The reviewer consistently caught the actual repository defect."
+3,case-12,,v1,clean,"No defect found; the tests validate the existing approval flow without changing runtime logic.",high,"This is a clean control case."4,case-01,,v2,caught,"The stricter defect-only prompt catches the null/empty bulk-approve defect and ignores the surrounding refactor noise.",high,"Prompt v2 filters out style-only observations and keeps the actual defect."
+4,case-02,,v2,caught,"The review correctly identifies the SQL injection risk in the search endpoint after the prompt explicitly excludes non-defect observations.",high,"The stricter prompt reduces noise and preserves the actual security defect."
+4,case-03,,v2,caught,"The discount rounding regression is now called out as an arithmetic correctness bug rather than being treated as acceptable cleanup.",high,"The new prompt is tuned to catch subtle correctness defects."
+4,case-04,,v2,clean,"No defect found; the rename is a behavior-preserving refactor and is now correctly ignored.",high,"The prompt no longer treats harmless refactors as defects."
+4,case-05,,v2,caught,"The delete action is still correctly identified as missing the required Admin authorization gate.",high,"This case remains a clear auth defect under the stricter prompt."
+4,case-06,,v2,clean,"No defect found; this is a test-only addition and stays clean under the defect-only prompt.",high,"The prompt correctly avoids flagging safe test changes."
+4,case-07,,v2,caught,"The reviewer still finds the sensitive logging leak, and the stricter wording keeps the finding focused on the actual issue.",high,"The prompt is effective for a real data exposure defect."
+4,case-08,,v2,caught,"The thread-safety regression from Dictionary replacement is caught as a concurrency defect under the stricter prompt.",high,"The case is still clearly a real correctness issue."
+4,case-09,,v2,clean,"No defect found; the diff only updates docs and logging configuration.",high,"The stricter prompt correctly ignores documentation-only changes."
+4,case-10,,v2,caught,"The broad exception handler returning Ok is called out as a silent failure bug under the defect-only prompt.",high,"The prompt keeps attention on actual runtime correctness risks."
+4,case-11,,v2,caught,"The duplicate-ID repository bug is identified as a real identity defect, and the prompt prevents false alarms on the surrounding code shape.",high,"This case remains a genuine defect under the tightened review criteria."
+4,case-12,,v2,clean,"No defect found; the patch only adds protective tests for existing business behavior.",high,"The stricter prompt correctly treats this as a safe control case."
